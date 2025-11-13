@@ -156,4 +156,114 @@ public class StudentDAO {
         
         return students;
     }
+
+    public List<Student> getStudentsFiltered(String major, String sortBy, String order) {
+        List<Student> students = new ArrayList<>();
+
+        sortBy = validateSortBy(sortBy);
+        order = validateOrder(order);
+
+        StringBuilder sql = new StringBuilder("SELECT * FROM students");
+
+        boolean hasMajorFilter = major != null && !major.trim().isEmpty();
+
+        if (hasMajorFilter) {
+            sql.append(" WHERE major = ?");
+        }
+
+        sql.append(" ORDER BY ").append(sortBy).append(" ").append(order);
+
+        try (Connection conn = getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+            // Bind major if filtering
+            if (hasMajorFilter) {
+                pstmt.setString(1, major);
+            }
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Student student = new Student();
+                student.setId(rs.getInt("id"));
+                student.setStudentCode(rs.getString("student_code"));
+                student.setFullName(rs.getString("full_name"));
+                student.setEmail(rs.getString("email"));
+                student.setMajor(rs.getString("major"));
+                student.setCreatedAt(rs.getTimestamp("created_at"));
+                students.add(student);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return students;
+    }
+
+    private String validateSortBy(String sortBy) {
+        String[] valid = {"id", "student_code", "full_name", "email", "major"};
+        for (String v : valid) {
+            if (v.equalsIgnoreCase(sortBy)) {
+                return v;
+            }
+        }
+        return "id";
+    }
+
+    private String validateOrder(String order) {
+        if ("desc".equalsIgnoreCase(order)) return "DESC";
+        return "ASC";
+    }
+
+    public List<Student> getStudentsPaginated(int offset, int recordsPerPage) {
+        List<Student> students = new ArrayList<>();
+        String sql = "SELECT * FROM students ORDER BY id DESC LIMIT ? OFFSET ?";
+
+        try (Connection conn = getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, recordsPerPage);
+            pstmt.setInt(2, offset);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Student student = new Student();
+                student.setId(rs.getInt("id"));
+                student.setStudentCode(rs.getString("student_code"));
+                student.setFullName(rs.getString("full_name"));
+                student.setEmail(rs.getString("email"));
+                student.setMajor(rs.getString("major"));
+                student.setCreatedAt(rs.getTimestamp("created_at"));
+
+                students.add(student);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return students;
+    }
+
+    public int getTotalStudents() {
+        String sql = "SELECT COUNT(*) FROM students";
+
+        try (Connection conn = getConnection();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql)) {
+
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
+    
 }
